@@ -1,0 +1,186 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CrossMarket AI · Tech</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f2f5f9;color:#172b45;font-family:Arial,"Microsoft YaHei",sans-serif}
+header{background:#10243e;color:white;padding:28px max(20px,5vw)}
+header h1{margin:0;color:#8bc5ff}
+header p{color:#c3d5e8}
+main{max-width:1150px;margin:24px auto;padding:0 16px}
+.panel{background:white;border:1px solid #dce5ef;border-radius:14px;padding:22px;margin-bottom:18px}
+h2{margin:0 0 16px;font-size:21px}
+button,input,select,textarea{font:inherit;border:1px solid #cbd7e5;border-radius:8px;padding:10px}
+button{cursor:pointer;background:#173a61;color:white}
+button:hover{background:#285f94}
+input,select,textarea{background:white;color:#172b45}
+textarea{width:100%;min-height:95px}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.row>*{flex:1;min-width:150px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat{background:#eaf2fa;padding:18px;border-radius:10px}
+.stat strong{display:block;font-size:27px;margin-top:8px}
+.item{padding:15px 0;border-bottom:1px solid #e5ebf2}
+.item:last-child{border:0}
+.muted{color:#6b7d91;font-size:13px}
+.tag{display:inline-block;background:#e9f1fa;border-radius:6px;padding:4px 8px;font-size:12px}
+label{display:block;font-weight:bold;margin:12px 0 5px}
+a{color:#2465a1}
+@media(max-width:600px){.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>CrossMarket AI / Tech</h1>
+<p>美股科技事件 → A股产业链 → 经济机制 → 证据验证</p>
+</header>
+<main>
+<section class="panel">
+<h2>研究工作台</h2>
+<div class="stats">
+<div class="stat">研究事件<strong id="count">0</strong></div>
+<div class="stat">待核验<strong id="pending">0</strong></div>
+<div class="stat">已核验<strong id="verified">0</strong></div>
+</div>
+<p class="muted">V0.9 · 在线静态网站 · 研究数据保存在当前浏览器</p>
+</section>
+
+<section class="panel">
+<h2>新增科技事件</h2>
+<div class="row">
+<select id="company">
+<option>NVIDIA</option><option>AMD</option>
+<option>Broadcom</option><option>Microsoft</option>
+<option>Amazon</option><option>Alphabet</option>
+<option>Meta</option><option>Tesla</option>
+<option>Apple</option><option>TSMC</option>
+<option>Other</option>
+</select>
+<select id="category">
+<option>AI芯片</option><option>资本开支</option>
+<option>光通信</option><option>半导体设备</option>
+<option>机器人</option><option>出口管制</option>
+<option>云计算</option><option>其他科技事件</option>
+</select>
+</div>
+<label>事件标题</label>
+<input id="headline" style="width:100%" placeholder="例如：某公司宣布扩大数据中心投资">
+<label>原始来源链接</label>
+<input id="source" style="width:100%" placeholder="https://...">
+<label>事件内容与关键事实</label>
+<textarea id="description" placeholder="记录公告原文、金额、日期和可验证事实"></textarea>
+<label>可能受影响的A股公司</label>
+<input id="ashares" style="width:100%" placeholder="公司名称或股票代码，多个用逗号分隔">
+<label>产业传导机制</label>
+<textarea id="mechanism" placeholder="为什么这一事件可能影响A股公司？利润由谁获得？"></textarea>
+<div class="row">
+<select id="status">
+<option value="待核验">待核验</option>
+<option value="已核验">已核验</option>
+<option value="已否定">已否定</option>
+</select>
+<button onclick="addEvent()">保存研究事件</button>
+</div>
+</section>
+
+<section class="panel">
+<h2>科技事件研究库</h2>
+<div class="row">
+<input id="search" placeholder="搜索公司、事件、A股..." oninput="render()">
+<select id="filter" onchange="render()">
+<option value="">全部状态</option>
+<option>待核验</option><option>已核验</option>
+<option>已否定</option>
+</select>
+<button onclick="exportData()">导出JSON备份</button>
+</div>
+<div id="events"></div>
+</section>
+</main>
+<script>
+const KEY="crossmarket-tech-v09";
+let records=[];
+try{records=JSON.parse(localStorage.getItem(KEY)||"[]");
+if(!Array.isArray(records))records=[];}catch(e){records=[];}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",
+'"':"&quot;","'":"&#39;"}[c]));
+function save(){localStorage.setItem(KEY,JSON.stringify(records));render();}
+function addEvent(){
+let title=$("headline").value.trim();
+if(!title){alert("请填写事件标题");return;}
+records.unshift({
+id:Date.now()+Math.random(),
+date:new Date().toLocaleString(),
+company:$("company").value,
+category:$("category").value,
+title,
+source:$("source").value.trim(),
+description:$("description").value.trim(),
+ashares:$("ashares").value.trim(),
+mechanism:$("mechanism").value.trim(),
+status:$("status").value
+});
+save();
+["headline","source","description","ashares","mechanism"]
+.forEach(id=>$(id).value="");
+}
+function removeEvent(id){
+if(!confirm("确定删除这条研究记录？"))return;
+records=records.filter(r=>r.id!==id);save();
+}
+function changeStatus(id,value){
+let r=records.find(r=>r.id===id);
+if(r){r.status=value;save();}
+}
+function render(){
+$("count").textContent=records.length;
+$("pending").textContent=records.filter(r=>r.status==="待核验").length;
+$("verified").textContent=records.filter(r=>r.status==="已核验").length;
+let q=$("search").value.toLowerCase();
+let status=$("filter").value;
+let items=records.filter(r=>
+(!status||r.status===status)&&
+JSON.stringify(r).toLowerCase().includes(q));
+$("events").innerHTML=items.length?items.map(r=>{
+let link="";
+try{
+let u=new URL(r.source);
+if(["http:","https:"].includes(u.protocol))
+link='<a href="'+esc(u.href)+'" target="_blank" rel="noopener noreferrer">查看原始来源</a>';
+}catch(e){}
+return `<div class="item">
+<span class="tag">${esc(r.company)}</span>
+<span class="tag">${esc(r.category)}</span>
+<h3>${esc(r.title)}</h3>
+<p class="muted">${esc(r.date)}</p>
+<p>${esc(r.description)}</p>
+<p><b>A股映射：</b>${esc(r.ashares)||"尚未建立"}</p>
+<p><b>传导机制：</b>${esc(r.mechanism)||"待研究"}</p>
+<p>${link}</p>
+<div class="row">
+<select onchange="changeStatus(${r.id},this.value)">
+${["待核验","已核验","已否定"].map(s=>
+`<option ${s===r.status?"selected":""}>${s}</option>`).join("")}
+</select>
+<button onclick="removeEvent(${r.id})">删除</button>
+</div></div>`;
+}).join(""):"<p class='muted'>暂无匹配事件。可在上方新增第一条研究记录。</p>";
+}
+function exportData(){
+let blob=new Blob([JSON.stringify(records,null,2)],
+{type:"application/json"});
+let url=URL.createObjectURL(blob);
+let a=document.createElement("a");
+a.href=url;a.download="crossmarket-research.json";
+a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+render();
+</script>
+</body>
+</html>
